@@ -1,0 +1,67 @@
+- 2008-01-16, Version 0.94 (actual version)
+    - waitIrq() can now be called with a timeout parameter.
+    - Overlapping of images is now enabled per default.
+    - Added a small number of parameter and state checks.
+
+- 2006-01-26, Version 0.93
+     - Changed major number from 70 to 221 to be in accordance with Linux device
+       numbering scheme.
+     - Added functionality to generate VME interrupts via software (see doc).
+     - Improved functionality of function "there".
+     - Changed handling of internal PCI addresses for image mapping. Image 
+       size is now only limited by 32-Bit border and available I/O memory.
+     - Changed handling of bus addresses for compatibility with 64-bit systems.
+     - Added some module parameters and two new statistics to /proc output.
+     - Fixed problem with 2.6.11 and higher kernel versions.
+     - Removed bug in DMA linked list operation.
+     - Added and changed some spinlocks to guarantee full concurrency.
+     - General code cleanup including change of some variable names and types.
+     - Added generation of vmelib as a shared library.
+     - Small change in directory structure.
+
+- 2005-05-04, Version 0.92
+     - Kernel 2.6.x support.
+     - Extended VME bus error handling (partly).
+     - Removed bug which prevented use of master image no. eight.
+     - Removed bug in DMA write function when dealing with multiple buffers.
+     - Removed bug in cleanup_module which could lead to a kernel Oops.
+     - Timer for mailbox handling now initialized correctly.
+     - Added various spinlocks.
+     - Removing of /proc entry corrected.
+     - Minor cleanup and restructure of source code.
+     - Added several range checks
+     - Driver and Interface Code Walkthrough
+     - Rework of documentation.
+
+- 2003-01-08, Version 0.91
+     - Driver checks and clears sysfail line which (on some boards,
+       i.e. ELTEC) is active by default.
+     - Cleanup of driver code.
+     - Added some hints to div-section of documentation.
+
+- 2002-09-10, Version 0.9
+     - waitMBX can now be called with a timeout value in seconds
+     - Added slave image informations to /proc interface
+     - Fixed bug in DMAread and DMAwrite. PCI and VMEBus address must
+       be 8-byte aligned (see doc).
+     - New function 'vmeSysReset' which generates a VMEBus SYSRESET signal.
+     - Additional function 'resetDriver' which completely resets driver
+       (freeing all images, releasing DMA, ...) without using rmmod.
+
+- 2002-07-25, Version 0.82a
+     - Bug fixed in waitMBX()
+     - Added function releaseMBX() to vmelib.cpp
+
+- 2002-07-23, Version 0.82:
+     - Additional buffer handling for DMA read/write functions.
+     - Fixed bug in function "there" which lead to a wrong result when 
+       previous bus error hadn't been cleared.
+     - New functions in "vmelib" to check for a bus error and to redirect 
+       output Messing from cout and cerr.
+
+- 2002-04-29, Version 0.81:
+       Bug fixed in driver which could disable (in some cases) the VMEBus 
+       after a previous bus error.
+
+- 2002-04-09, Version 0.8:
+       First official release.

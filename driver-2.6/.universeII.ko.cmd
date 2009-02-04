@@ -1,0 +1,1 @@
+cmd_/net/homes/hammann/src/universeII/driver-2.6/universeII.ko := ld -r -m elf_i386  --build-id -o /net/homes/hammann/src/universeII/driver-2.6/universeII.ko /net/homes/hammann/src/universeII/driver-2.6/universeII.o /net/homes/hammann/src/universeII/driver-2.6/universeII.mod.o
