@@ -23,6 +23,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <sys/time.h>
+#include <string.h>
 #include "vmelib.h"
 
 static char Version[] = "0.94 (January 2008)";

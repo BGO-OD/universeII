@@ -39,7 +39,7 @@ MODULE_LICENSE("GPL");
 
 static const char Version[] = "0.94 (January 2008)";
 
-//#define VMIC
+#define VMIC
 #ifdef VMIC
     #include "vmic.h"
     static void __iomem *VmicBaseAddr;

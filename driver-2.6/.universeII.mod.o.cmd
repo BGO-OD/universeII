@@ -1,7 +1,7 @@
-cmd_/net/homes/hammann/src/universeII/driver-2.6/universeII.mod.o := gcc -Wp,-MD,/net/homes/hammann/src/universeII/driver-2.6/.universeII.mod.o.d  -nostdinc -isystem /usr/lib/gcc/i586-suse-linux/4.3/include -D__KERNEL__ -Iinclude  -I/usr/src/linux-2.6.28.2/arch/x86/include -include include/linux/autoconf.h -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs -fno-strict-aliasing -fno-common -Werror-implicit-function-declaration -Os -m32 -msoft-float -mregparm=3 -freg-struct-return -mpreferred-stack-boundary=2 -march=i686 -mtune=pentium3 -mtune=generic -Wa,-mtune=generic32 -ffreestanding -DCONFIG_AS_CFI=1 -DCONFIG_AS_CFI_SIGNAL_FRAME=1 -pipe -Wno-sign-compare -fno-asynchronous-unwind-tables -mno-sse -mno-mmx -mno-sse2 -mno-3dnow -Iarch/x86/include/asm/mach-default -fno-stack-protector -fno-omit-frame-pointer -fno-optimize-sibling-calls -g -Wdeclaration-after-statement -Wno-pointer-sign  -D"KBUILD_STR(s)=\#s" -D"KBUILD_BASENAME=KBUILD_STR(universeII.mod)"  -D"KBUILD_MODNAME=KBUILD_STR(universeII)" -D"DEBUG_HASH=63" -D"DEBUG_HASH2=17" -DMODULE -c -o /net/homes/hammann/src/universeII/driver-2.6/universeII.mod.o /net/homes/hammann/src/universeII/driver-2.6/universeII.mod.c
+cmd_/net/homes/hammann/src/daq/drivers/universeII/driver-2.6/universeII.mod.o := gcc -Wp,-MD,/net/homes/hammann/src/daq/drivers/universeII/driver-2.6/.universeII.mod.o.d  -nostdinc -isystem /usr/lib/gcc/i586-suse-linux/4.3/include -D__KERNEL__ -Iinclude  -I/usr/src/linux-2.6.28.2/arch/x86/include -include include/linux/autoconf.h -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs -fno-strict-aliasing -fno-common -Werror-implicit-function-declaration -Os -m32 -msoft-float -mregparm=3 -freg-struct-return -mpreferred-stack-boundary=2 -march=i686 -mtune=pentium3 -mtune=generic -Wa,-mtune=generic32 -ffreestanding -DCONFIG_AS_CFI=1 -DCONFIG_AS_CFI_SIGNAL_FRAME=1 -pipe -Wno-sign-compare -fno-asynchronous-unwind-tables -mno-sse -mno-mmx -mno-sse2 -mno-3dnow -Iarch/x86/include/asm/mach-default -fno-stack-protector -fno-omit-frame-pointer -fno-optimize-sibling-calls -g -Wdeclaration-after-statement -Wno-pointer-sign  -D"KBUILD_STR(s)=\#s" -D"KBUILD_BASENAME=KBUILD_STR(universeII.mod)"  -D"KBUILD_MODNAME=KBUILD_STR(universeII)" -D"DEBUG_HASH=50" -D"DEBUG_HASH2=50" -DMODULE -c -o /net/homes/hammann/src/daq/drivers/universeII/driver-2.6/universeII.mod.o /net/homes/hammann/src/daq/drivers/universeII/driver-2.6/universeII.mod.c
 
-deps_/net/homes/hammann/src/universeII/driver-2.6/universeII.mod.o := \
-  /net/homes/hammann/src/universeII/driver-2.6/universeII.mod.c \
+deps_/net/homes/hammann/src/daq/drivers/universeII/driver-2.6/universeII.mod.o := \
+  /net/homes/hammann/src/daq/drivers/universeII/driver-2.6/universeII.mod.c \
     $(wildcard include/config/module/unload.h) \
   include/linux/module.h \
     $(wildcard include/config/modules.h) \
@@ -307,6 +307,6 @@ deps_/net/homes/hammann/src/universeII/driver-2.6/universeII.mod.o := \
   include/linux/vermagic.h \
   include/linux/utsrelease.h \
 
-/net/homes/hammann/src/universeII/driver-2.6/universeII.mod.o: $(deps_/net/homes/hammann/src/universeII/driver-2.6/universeII.mod.o)
+/net/homes/hammann/src/daq/drivers/universeII/driver-2.6/universeII.mod.o: $(deps_/net/homes/hammann/src/daq/drivers/universeII/driver-2.6/universeII.mod.o)
 
-$(deps_/net/homes/hammann/src/universeII/driver-2.6/universeII.mod.o):
+$(deps_/net/homes/hammann/src/daq/drivers/universeII/driver-2.6/universeII.mod.o):
