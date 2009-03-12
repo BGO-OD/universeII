@@ -47,7 +47,7 @@ int allocImage(unsigned int *addr, unsigned int vdw)
 
     image = vme.getImage(*addr & 0xFFFF0000, 0x10000, vas, vdw, MASTER);
     vme.setOption(image, POST_WRITE_DIS);
-
+    cout << image << endl;
     return image;
 }
 
