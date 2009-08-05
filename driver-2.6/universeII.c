@@ -206,6 +206,7 @@ DECLARE_WAIT_QUEUE_HEAD(vmeWait);
 // DMA timer and DMA wait queue
 
 static struct timer_list DMA_timer;      // This is a timer for returning status
+static int DMA_timeout_occured;
 
 DECLARE_WAIT_QUEUE_HEAD(dmaWait);
 
@@ -245,6 +246,7 @@ _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
 //----------------------------------------------------------------------------
 static void DMA_timeout(unsigned long ptr)
 {
+    DMA_timeout_occured++;
     wake_up_interruptible(&dmaWait);
     statistics.timeouts++;
 }
@@ -542,18 +544,27 @@ static int testAndClearDMAErrors(void)
 //----------------------------------------------------------------------------
 static void execDMA(u32 chain)
 {
+    u32 tmp;
     DEFINE_WAIT(wait);
+    DMA_timeout_occured = 0;
 
     DMA_timer.expires = jiffies + DMA_ACTIVE_TIMEOUT;  // We need a timer to
     DMA_timer.function = DMA_timeout;                  // timeout DMA transfers
     add_timer(&DMA_timer);
 
-    prepare_to_wait(&dmaWait, &wait, TASK_INTERRUPTIBLE);
     writel(0x80006F0F | chain, baseaddr + DGCS);    // Start DMA, clear errors
                                                     // and enable all DMA irqs
-    schedule();                                     // Wait for DMA to finish
-
+    for (;;) {
+        prepare_to_wait(&dmaWait, &wait, TASK_INTERRUPTIBLE);
+        tmp = readl(baseaddr + DGCS);// check if DMA tranfser is still running
+        if( !(DMA_timeout_occured == 0  && (tmp & 0x00008000)) ) {
+            break;
+        }
+        schedule();                                  // Wait for DMA to finish
+    }
+    
     del_timer(&DMA_timer);
+
     finish_wait(&dmaWait, &wait);
 }
 
