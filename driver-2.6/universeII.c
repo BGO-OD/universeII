@@ -247,6 +247,7 @@ _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
 static void DMA_timeout(unsigned long ptr)
 {
     DMA_timeout_occured++;
+	printk("UniverseII: DMA timeout occured\n");
     wake_up_interruptible(&dmaWait);
     statistics.timeouts++;
 }
@@ -557,12 +558,16 @@ static void execDMA(u32 chain)
     for (;;) {
         prepare_to_wait(&dmaWait, &wait, TASK_INTERRUPTIBLE);
         tmp = readl(baseaddr + DGCS);// check if DMA tranfser is still running
-        if( !(DMA_timeout_occured == 0  && (tmp & 0x00008000)) ) {
+	    if( DMA_timeout_occured != 0) {
+// 		    printk("DMA schedule returned : DGCS= 0x%08x DMA_timeout_occured=%x\n",tmp,DMA_timeout_occured);
+		    break;
+	    }
+	    if( (tmp & 0x00007F00) !=0)  {
+// 	        printk("DMA schedule returned : DGCS= 0x%08x DMA_timeout_occured=%x\n",tmp,DMA_timeout_occured);
             break;
         }
         schedule();                                  // Wait for DMA to finish
     }
-    
     del_timer(&DMA_timer);
 
     finish_wait(&dmaWait, &wait);
@@ -1522,7 +1527,8 @@ static int universeII_ioctl(struct inode *inode, struct file *file, unsigned int
                                 "%d is not set!\n", n);
                         return n;
                     }
-                    scan = scan->next;
+	                scan->dcp.dcpp &= ~0x00000002; //reset processed bit for reuse of list
+	                scan = scan->next;
                 }
 
                 break;
