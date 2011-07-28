@@ -97,8 +97,7 @@ static int universeII_release(struct inode *, struct file *);
 static ssize_t universeII_read(struct file *, char __user *, size_t, loff_t *);
 static ssize_t universeII_write(struct file *, const char __user *, size_t,
                                 loff_t *);
-static int universeII_ioctl(struct inode *, struct file *, unsigned int,
-                            unsigned long);
+static int universeII_ioctl(struct file *, unsigned int, unsigned long);
 static int universeII_mmap(struct file *, struct vm_area_struct *);
 
 
@@ -117,7 +116,7 @@ static struct file_operations universeII_fops = {
     .release = universeII_release,
     .read    = universeII_read,
     .write   = universeII_write,
-    .ioctl   = universeII_ioctl,
+    .unlocked_ioctl   = universeII_ioctl,
     .mmap    = universeII_mmap
 };
 
@@ -1021,9 +1020,10 @@ static int universeII_release(struct inode *inode, struct file *file)
 //  universeII_ioctl()
 //
 //----------------------------------------------------------------------------
-static int universeII_ioctl(struct inode *inode, struct file *file, unsigned int cmd,
+static int universeII_ioctl(struct file *file, unsigned int cmd,
                             unsigned long arg)
 {
+    struct inode *inode = file->f_dentry->d_inode;
     unsigned int minor = MINOR(inode->i_rdev);
     unsigned int i = 0;
     u32 ctl = 0, to = 0, bs = 0, bd = 0, imageStart, imageEnd;
@@ -1809,7 +1809,7 @@ static int __init universeII_init(void)
 
     printk("UniverseII driver version %s\n", Version);
 
-    universeII_dev = pci_find_device(PCI_VENDOR_ID_TUNDRA,
+    universeII_dev = pci_get_device(PCI_VENDOR_ID_TUNDRA,
                                      PCI_DEVICE_ID_TUNDRA_CA91C042,
                                      universeII_dev);
     if (!universeII_dev) {
@@ -1936,9 +1936,9 @@ static int __init universeII_init(void)
     // Enable byte-lane-swapping for master and slave images and VMEbus 
     // access which is disabled by default!!!
 
-    if ((vmicPci = pci_find_device(VMIC_VEND_ID, VMIC_FPGA_DEVICE_ID1, NULL)) ||
-        (vmicPci = pci_find_device(VMIC_VEND_ID, VMIC_FPGA_DEVICE_ID2, NULL)) ||
-        (vmicPci = pci_find_device(VMIC_VEND_ID, VMIC_FPGA_DEVICE_ID3, NULL))) {
+    if ((vmicPci = pci_get_device(VMIC_VEND_ID, VMIC_FPGA_DEVICE_ID1, NULL)) ||
+        (vmicPci = pci_get_device(VMIC_VEND_ID, VMIC_FPGA_DEVICE_ID2, NULL)) ||
+        (vmicPci = pci_get_device(VMIC_VEND_ID, VMIC_FPGA_DEVICE_ID3, NULL))) {
 
         printk("VMIC subsystem ID: %x\n", vmicPci->subsystem_device);
 
