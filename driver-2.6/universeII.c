@@ -1799,7 +1799,7 @@ static void __exit universeII_exit(void)
 static int __init universeII_init(void)
 {
     u32 ba, temp, status, misc_ctl, mast_ctl, vrai_ctl, pci_csr;
-    int i, j, irq, result;
+    int i, j, result;
     void __iomem *virtAddr;
     struct page *page;
 
@@ -1982,23 +1982,25 @@ static int __init universeII_init(void)
     writel(0x00000000, baseaddr + LINT_EN);             // Disable interrupts
     writel(0x0000FFFF, baseaddr + LINT_STAT);           // Clear Any Pending irqs
 
-    pci_read_config_dword(universeII_dev, PCI_INTERRUPT_LINE, &irq);
-    irq &= 0x000000FF;
-    result = request_irq(irq, irq_handler, IRQF_SHARED,
-                         "UniverseII", universeII_dev);
-    if (result) {
+		{
+			int irq;
+			irq = universeII_dev->irq;
+			result = request_irq(irq, irq_handler, IRQF_SHARED,
+													 "UniverseII", universeII_dev);
+			if (result) {
         printk("UniverseII: Can't get assigned pci irq vector %02X\n", irq);
         iounmap(baseaddr);
         return -4;
-    } else {
+			} else {
         printk("UniverseII: Using PCI irq %02d (shared)!\n", irq);
-
+				
         writel(0x000015FE, baseaddr + LINT_EN);      // enable DMA IRQ, BERR,
                                                      // VME IRQ#1..#7 and SW_IACK
         writel(0, baseaddr + LINT_MAP0);                // Map all irqs to LINT#0
         writel(0, baseaddr + LINT_MAP1);                // Map all irqs to LINT#0
         writel(0, baseaddr + LINT_MAP2);                // Map all irqs to LINT#0
-    }
+			}
+		}
 
     // Clear all image descriptors
 
