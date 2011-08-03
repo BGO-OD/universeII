@@ -97,7 +97,7 @@ static int universeII_release(struct inode *, struct file *);
 static ssize_t universeII_read(struct file *, char __user *, size_t, loff_t *);
 static ssize_t universeII_write(struct file *, const char __user *, size_t,
                                 loff_t *);
-static int universeII_ioctl(struct file *, unsigned int, unsigned long);
+static long universeII_ioctl(struct file *, unsigned int, unsigned long);
 static int universeII_mmap(struct file *, struct vm_area_struct *);
 
 
@@ -628,7 +628,7 @@ static ssize_t universeII_read(struct file *file, char __user *buf,
     switch (minor) {
         case CONTROL_MINOR:
             vi = readl(baseaddr + (*ppos & 0x0FFFFFFF));
-            __copy_to_user(temp, &vi, 4);
+            okcount = __copy_to_user(temp, &vi, 4);
             break;
 
         case DMA_MINOR:
@@ -693,8 +693,13 @@ static ssize_t universeII_read(struct file *file, char __user *buf,
                                 return okcount;
                             else
                                 okcount++;
-
-                            __copy_to_user(temp, &vc, 1);
+														{
+															int result;
+															result = __copy_to_user(temp, &vc, 1);
+															if (result<0) {
+																return result;
+															}
+														}
                             image_ptr++;
                             temp++;
                         }
@@ -712,8 +717,13 @@ static ssize_t universeII_read(struct file *file, char __user *buf,
                                 return okcount;
                             else
                                 okcount += 2;
-
-                            __copy_to_user(temp, &vs, 2);
+														{
+															int result;
+															result = __copy_to_user(temp, &vs, 2);
+															if (result<0) {
+																return result;
+															}
+														}
                             image_ptr += 2;
                             temp += 2;
                         }
@@ -731,8 +741,13 @@ static ssize_t universeII_read(struct file *file, char __user *buf,
                                 return okcount;
                             else
                                 okcount += 4;
-
-                            __copy_to_user(temp, &vi, 4);
+														{
+															int result;
+															result = __copy_to_user(temp, &vi, 4);
+															if (result<0) {
+																return result;
+															}
+														}
                             image_ptr += 4;
                             temp += 4;
                         }
@@ -1020,7 +1035,7 @@ static int universeII_release(struct inode *inode, struct file *file)
 //  universeII_ioctl()
 //
 //----------------------------------------------------------------------------
-static int universeII_ioctl(struct file *file, unsigned int cmd,
+static long universeII_ioctl(struct file *file, unsigned int cmd,
                             unsigned long arg)
 {
     struct inode *inode = file->f_dentry->d_inode;
@@ -1047,7 +1062,13 @@ static int universeII_ioctl(struct file *file, unsigned int cmd,
                 unsigned int pciBase = 0;
                 image_regs_t iRegs;
 
-                copy_from_user(&iRegs, (char *) arg, sizeof(iRegs));
+								{
+									int result;
+									result = copy_from_user(&iRegs, (char *) arg, sizeof(iRegs));
+									if (result < 0) {
+										return result;
+									}
+								}
 
                 if ((iRegs.ms < 0) || (iRegs.ms > 1))
                     return -1;
@@ -1206,8 +1227,14 @@ static int universeII_ioctl(struct file *file, unsigned int cmd,
                 void __iomem *virtAddr;
                 int virq, vstatid;
                 irq_setup_t isetup;
-
-                copy_from_user(&isetup, (char *) arg, sizeof(isetup));
+								
+								{
+									int result;
+									result=copy_from_user(&isetup, (char *) arg, sizeof(isetup));
+									if (result<0) {
+										return result;
+									}
+								}
 
                 virq = isetup.vmeIrq - 1;
                 vstatid = isetup.vmeStatus;
@@ -1264,8 +1291,13 @@ static int universeII_ioctl(struct file *file, unsigned int cmd,
                 int virq, vstatid;
                 irq_setup_t isetup;
 
-                copy_from_user(&isetup, (char *) arg, sizeof(isetup));
-
+								{
+									int result;
+									result = copy_from_user(&isetup, (char *) arg, sizeof(isetup));
+									if (result<0) {
+										return result;
+									}
+								}
                 virq = isetup.vmeIrq - 1;
                 vstatid = isetup.vmeStatus;
 
@@ -1291,8 +1323,14 @@ static int universeII_ioctl(struct file *file, unsigned int cmd,
                 struct timer_list *vTimer = NULL;
 
                 DEFINE_WAIT(wait);
-
-                copy_from_user(&irqData, (char *) arg, sizeof(irqData));
+								
+								{
+									int result;
+									result=copy_from_user(&irqData, (char *) arg, sizeof(irqData));
+									if (result<0) {
+										return result;
+									}
+								}
 
                 vmeIrq = irqData.irqLevel - 1;
                 vmeStatus = irqData.statusID;
@@ -1433,8 +1471,13 @@ static int universeII_ioctl(struct file *file, unsigned int cmd,
                 unsigned int dla, offset;
                 list_packet_t lpacket;
                 struct kcp *newP, *ptr;
-
-                copy_from_user(&lpacket, (char *) arg, sizeof(lpacket));
+								{
+									int result;
+									result = copy_from_user(&lpacket, (char *) arg, sizeof(lpacket));
+									if (result<0) {
+										return result;
+									}
+								}
                 newP = kmalloc(sizeof(*newP), GFP_KERNEL | GFP_DMA);
 
                 ptr = cpLists[lpacket.list].commandPacket;
