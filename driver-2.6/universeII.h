@@ -92,6 +92,7 @@ struct cpl
     DMA_cmd_packet_t *dcp;      // Pointer to array of command packets
     dma_addr_t start;           // Start address for DMA in PCI address space
     unsigned int packets;       // Number of packets in the list
+    struct file * file;         // file pointer that created the list
 };
 
 

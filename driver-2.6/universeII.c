@@ -177,7 +177,7 @@ static dma_addr_t dmaHandle = 0;
 
 static unsigned int dmaBufSize = 0;      // Size of one DMA buffer
 static unsigned int dma_dctl;            // DCTL register for DMA
-static int dma_in_use = 0;
+static struct file * dma_in_use = 0;
 
 
 // All image related information like start address, end address, ...
@@ -1026,6 +1026,22 @@ static int universeII_release(struct inode *inode, struct file *file)
         for (j = 0; j < 256; j++)         // combinations of this image 
             if (irq_device[i][j].ok == minor + 1)
                 irq_device[i][j].ok = 0;
+			
+	if(dma_in_use == file) {
+		dma_in_use = NULL;
+		printk("UniverseII: DMA still in use while releasing file.\n");
+	}
+
+	for(i = 0; i<256; i++) {
+		if(cpLists[i].file == file) {
+			if (cpLists[i].dcp != NULL) {
+				pci_free_consistent(universeII_dev,sizeof(DMA_cmd_packet_t)*128,cpLists[i].dcp,cpLists[i].start);
+			}
+			cpLists[i].packets = 0;
+			cpLists[i].dcp = NULL;
+			cpLists[i].file = NULL;
+		}
+	}
 
     return 0;
 }
@@ -1465,6 +1481,7 @@ static long universeII_ioctl(struct file *file, unsigned int cmd,
 
 				cpLists[i].dcp = pci_alloc_consistent(universeII_dev,sizeof(DMA_cmd_packet_t)*128,&(cpLists[i].start));
 				cpLists[i].packets = 0;
+				cpLists[i].file = file;
                 return i;
 
                 break;
@@ -1610,6 +1627,7 @@ static long universeII_ioctl(struct file *file, unsigned int cmd,
 				pci_free_consistent(universeII_dev,sizeof(DMA_cmd_packet_t)*128,cpLists[arg].dcp,cpLists[arg].start);
                 cpLists[arg].dcp = NULL;
 				cpLists[arg].packets = 0;
+				cpLists[arg].file = NULL;
                 break;
             }
 
@@ -1688,7 +1706,7 @@ static long universeII_ioctl(struct file *file, unsigned int cmd,
                                                          // multiple blocks
                     else
                         dmaBufSize = 0;
-                    dma_in_use = 1;
+                    dma_in_use = file;
                     code = 1;
                 }
                 spin_unlock(&dma_lock);
@@ -1697,7 +1715,12 @@ static long universeII_ioctl(struct file *file, unsigned int cmd,
             }
 
         case IOCTL_RELEASE_DMA: {
-                dma_in_use = 0;
+				if(file == dma_in_use) {
+					dma_in_use = NULL;
+				} else {
+					printk("UniverseII: Trying to free DMA allocated by different file!\n");
+					return -1;
+				}
                 break;
             }
 
@@ -1729,7 +1752,7 @@ static long universeII_ioctl(struct file *file, unsigned int cmd,
                     writel(0x00006F00, baseaddr + DGCS);  // clear all previous
                                                           // errors and
                                                           // disable DMA irqs
-                    dma_in_use = 0;
+                    dma_in_use = NULL;
                 }
 
                 // remove all existing command packet lists
