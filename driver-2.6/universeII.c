@@ -514,7 +514,7 @@ static int testAndClearBERR(void)
 static int testAndClearDMAErrors(void)
 {
     u32 tmp = readl(baseaddr + DGCS);
-
+    u32 tmp2 = readl(baseaddr + PCI_CSR);
     if (!(tmp & 0x00000800))      // Check if DMA status is done
     {
         printk("UniverseII: DMA error, DGCS: %08x !\n", tmp);
@@ -525,8 +525,8 @@ static int testAndClearDMAErrors(void)
         }
 
         if (tmp & 0x00006700)     // Check for errors
-            printk("UniverseII: DMA write stopped with error. DGCS = %08x !\n",
-                   tmp);
+            printk("UniverseII: DMA write stopped with error. DGCS = %08x PCI_CSR = %08x !\n",
+                   tmp,tmp2);
 
         writel(0x00006F00, baseaddr + DGCS);    // Clear all errors and
         statistics.dmaErrors++;                 // Disable all DMA irqs
@@ -1455,13 +1455,15 @@ static long universeII_ioctl(struct file *file, unsigned int cmd,
 
         case IOCTL_NEW_DCP: {
                 for (i = 0; i < 256; i++)   // find a free list
-                    if (cpLists[i].free)
+                    if (!cpLists[i].dcp)
                         break;
 
                 if (i > 255)                // can't create more lists
                     return -1;
 
-                cpLists[i].free = 0;        // mark list as not free
+
+				cpLists[i].dcp = pci_alloc_consistent(universeII_dev,sizeof(DMA_cmd_packet_t)*128,&(cpLists[i].start));
+				cpLists[i].packets = 0;
                 return i;
 
                 break;
@@ -1470,82 +1472,77 @@ static long universeII_ioctl(struct file *file, unsigned int cmd,
         case IOCTL_ADD_DCP: {
                 unsigned int dla, offset;
                 list_packet_t lpacket;
-                struct kcp *newP, *ptr;
-								{
-									int result;
-									result = copy_from_user(&lpacket, (char *) arg, sizeof(lpacket));
-									if (result<0) {
-										return result;
-									}
-								}
-                newP = kmalloc(sizeof(*newP), GFP_KERNEL | GFP_DMA);
-
-                ptr = cpLists[lpacket.list].commandPacket;
-                if (ptr == NULL) {
-                    cpLists[lpacket.list].commandPacket = newP;
-                    cpLists[lpacket.list].start = 
-                               pci_map_single(universeII_dev, &(newP->dcp.dctl),
-                                              sizeof(*newP), DMA_BIDIRECTIONAL);
-                }
-                else {
-                    while (ptr->next != NULL)     // find end of list
-                        ptr = ptr->next;
-                    ptr->next = newP;              // append new command packet
-                    ptr->dcp.dcpp =
-                               pci_map_single(universeII_dev, &(newP->dcp.dctl),
-                                              sizeof(*newP), DMA_BIDIRECTIONAL);
-
-                    if (ptr->dcp.dcpp & 0x0000001F) {
-                        printk ("UniverseII: last 5 bits of dcpp != 0. dcpp "
-                                "is: %08x !\n", ptr->dcp.dcpp);
-                        kfree(newP);
-                        return -1;
-                    }
-
-                    ptr->dcp.dcpp &= 0xFFFFFFFE;   // clear end bit
-                }
+				DMA_cmd_packet_t * newP;
+				struct cpl * currentList;
+				{
+					int result;
+					result = copy_from_user(&lpacket, (char *) arg, sizeof(lpacket));
+					if (result<0) {
+						return result;
+					}
+				}
+				if(lpacket.list > 255) {
+					printk(KERN_WARNING "UniverseII: Attempting to add packet to invalid list %d\n",lpacket.list);
+					return -1;
+				}
+				
+				currentList = &(cpLists[lpacket.list]);
+				if(!currentList->dcp) {
+					printk(KERN_WARNING "UniverseII: Attempting to use not initialized list %d\n",lpacket.list);
+					return -1;
+				}
+				
+				if(currentList->packets >= 128) {
+					printk("UniverseII: Attempting to add more than maximum number of packtets to linked list %d\n",lpacket.list);
+					return -1;
+				}
+				
+				newP = &(currentList->dcp[currentList->packets]);
 
                 // fill newP command packet
-                newP->next = NULL;
-                newP->dcp.dctl = lpacket.dctl;   // control register
-                newP->dcp.dtbc = lpacket.dtbc;   // number of bytes to transfer
-                newP->dcp.dva = lpacket.dva;     // VMEBus address
-                newP->dcp.dcpp = 0x00000001;     // last packet in list
+                
+                newP->dctl = lpacket.dctl;   // control register
+                newP->dtbc = lpacket.dtbc;   // number of bytes to transfer
+                newP->dva = lpacket.dva;     // VMEBus address
+                newP->dcpp = 0x00000001;     // last packet in list
+
+                if(currentList->packets > 0) {
+					currentList->dcp[currentList->packets-1].dcpp = currentList->start + sizeof(DMA_cmd_packet_t)*currentList->packets;
+					dla = currentList->dcp[currentList->packets-1].dla +currentList->dcp[currentList->packets-1].dtbc;
+				} else {
+					dla = dmaHandle;
+				}
 
                 // last three bits of PCI and VME address MUST be identical!
-
-                if (ptr == NULL)                 // calculate offset
-                    dla = dmaHandle;
-                else
-                    dla = ptr->pciStart + ptr->dcp.dtbc;
 
                 offset = (((lpacket.dva & 0x7) + 0x8) - (dla & 0x7)) & 0x7;
 
                 if (dla + offset + lpacket.dtbc > dmaHandle + PCI_BUF_SIZE) {
-                    ptr->next = NULL;
-                    pci_unmap_single(universeII_dev, ptr->dcp.dcpp,
-                                     sizeof(*newP), DMA_BIDIRECTIONAL);
-                    ptr->dcp.dcpp = 0x00000001;
-                    kfree(newP);
+					currentList->dcp[currentList->packets-1].dcpp = 0x00000001;
                     printk("UniverseII: DMA linked list packet exceeds global DMA "
                            "buffer size!");
                     return -1;
                 }
 
-                newP->dcp.dla = dla + offset;    // PCI address
-                newP->pciStart = dla + offset;
-
+                newP->dla = dla + offset;    // PCI address
+// 				printk("UniverseII: DMA linked list packet: dla = %08x dva = %08x dcpp =  %08x\n",newP->dla,newP->dva,newP->dcpp);
+				
+				currentList->packets++;
                 return offset;
                 break;
             }
 
         case IOCTL_EXEC_DCP: {
-                int n = 0;
                 u32 val;
-                struct kcp *scan;
-
-                // Check that DMA is idle
-                val = readl(baseaddr + DGCS);
+// 				u32 dctl, dtbc,dla,dva,dcpp;
+				DMA_cmd_packet_t *scan;
+				if(arg > 255) {
+					printk(KERN_WARNING "UniverseII: Attempting to execute invalid list %ld\n",arg);
+					return -1;
+				}
+				
+				// Check that DMA is idle
+				val = readl(baseaddr + DGCS);
                 if (val & 0x00008000) {
                     printk ("UniverseII: Can't execute list %ld! DMA status = "
                             "%08x!\n", arg, val);
@@ -1557,40 +1554,48 @@ static long universeII_ioctl(struct file *file, unsigned int cmd,
 
                 execDMA(0x08000000);                     // Enable chained mode
 
+// 				dctl = readl(baseaddr + DCTL);
+// 				dtbc = readl(baseaddr + DTBC);
+// 				dla  = readl(baseaddr + DLA );
+// 				dva  = readl(baseaddr + DVA );
+// 				dcpp = readl(baseaddr + DCPP);
+				
+// 				printk("UniverseII: dctl = %08x dtbc = %08x dla = %08x dva = %08x dcpp = %08x \n",
+// 					   dctl,dtbc,dla,dva,dcpp);
+				
                 if (testAndClearDMAErrors())             // Check for DMA errors
-                    return -2;
+                     return -2;
 
                 // Check that all command packets have been processed properly
 
-                scan = cpLists[arg].commandPacket;
-                while (scan != NULL) {
-                    n++;
-                    if (!(scan->dcp.dcpp & 0x00000002)) {
+				for (i=0; i< cpLists[arg].packets; i++) {
+					 scan = &(cpLists[arg].dcp[i]);
+// 					 printk("UniverseII: Linked List packet %d @ %p after transfer: "
+// 					"dctl = %08x dtbc = %08x dla = %08x dva = %08x dcpp = %08x \n",
+// 			i,scan ,scan->dctl,scan->dtbc,scan->dla,scan->dva,scan->dcpp);
+                    if (!(scan->dcpp & 0x00000002)) {
                         printk ("UniverseII: Processed bit of packet number "
-                                "%d is not set!\n", n);
-                        return n;
+                                "%d is not set!\n", i);
+                        return i;
                     }
-	                scan->dcp.dcpp &= ~0x00000002; //reset processed bit for reuse of list
-	                scan = scan->next;
+	                scan->dcpp &= ~0x00000002; //reset processed bit for reuse of list
                 }
 
                 break;
             }
 
         case IOCTL_DEL_DCL: {
-                struct kcp *del, *search;
-
-                search = cpLists[arg].commandPacket;
-                while (search != NULL) {
-                    del = search;
-                    search = search->next;
-                    pci_unmap_single(universeII_dev, del->dcp.dcpp, 
-                                     sizeof(*del), DMA_BIDIRECTIONAL);
-                    kfree(del);
-                }
-                cpLists[arg].commandPacket = NULL;
-                cpLists[arg].free = 1;
-
+			if(arg > 255) {
+				printk(KERN_WARNING "UniverseII: Attempting to delete invalid list %ld\n",arg);
+				return -1;
+			}
+			if(cpLists[arg].dcp == NULL) {
+				printk(KERN_WARNING "UniverseII: Attempting to delete unused list %ld\n",arg);
+				return -1;
+			}
+				pci_free_consistent(universeII_dev,sizeof(DMA_cmd_packet_t)*128,cpLists[arg].dcp,cpLists[arg].start);
+                cpLists[arg].dcp = NULL;
+				cpLists[arg].packets = 0;
                 break;
             }
 
@@ -1691,9 +1696,8 @@ static long universeII_ioctl(struct file *file, unsigned int cmd,
         case IOCTL_RESET_ALL: {
                 int j, error = 0;
                 u32 csr;
-                struct kcp *del, *search;
 
-                printk("UniverseII: General driver reset requested by user!");
+                printk("UniverseII: General driver reset requested by user!\n");
 
                 // clear all previous PCI errors
 
@@ -1716,17 +1720,13 @@ static long universeII_ioctl(struct file *file, unsigned int cmd,
 
                 // remove all existing command packet lists
 
-                for (i = 0; i < 256; i++)
-                    if (cpLists[i].free == 0) {
-                        search = cpLists[arg].commandPacket;
-                        cpLists[arg].commandPacket = NULL;
-                        cpLists[arg].free = 1;
-                        while (search != NULL) {
-                            del = search;
-                            search = search->next;
-                            kfree(del);
-                        }
+                for (i = 0; i < 256; i++) {
+                    if (cpLists[i].dcp != NULL) {
+						pci_free_consistent(universeII_dev, sizeof(DMA_cmd_packet_t)*128, cpLists[i].dcp, cpLists[i].start);
+						cpLists[i].dcp = NULL;
                     }
+			
+		        }
 
                 // remove all irq setups
 
@@ -1828,6 +1828,12 @@ static void __exit universeII_exit(void)
 
         pci_free_consistent(universeII_dev, PCI_BUF_SIZE, virtAddr, dmaHandle);
     }
+    
+    for(i=0; i< 256;i++) {
+		if(cpLists[i].dcp !=NULL) {
+			pci_free_consistent(universeII_dev, sizeof(DMA_cmd_packet_t)*128, cpLists[i].dcp, cpLists[i].start);
+		}
+	}
 
     printk("UniverseII driver removed!\n");
 }
@@ -1850,7 +1856,7 @@ static int __init universeII_init(void)
     struct pci_dev *vmicPci = NULL;
 #endif
 
-    printk("UniverseII driver version %s\n", Version);
+    printk("UniverseII driver version %s , compiled "__DATE__ " " __TIME__ "\n", Version);
 
     universeII_dev = pci_get_device(PCI_VENDOR_ID_TUNDRA,
                                      PCI_DEVICE_ID_TUNDRA_CA91C042,
@@ -2057,6 +2063,11 @@ static int __init universeII_init(void)
         image[i].slaveBuf = NULL;
         image[i].buffer = 0;
     }
+    
+    if (pci_set_dma_mask(universeII_dev, DMA_BIT_MASK(32))) {
+		printk(KERN_WARNING
+		"UniverseII: No suitable DMA available.\n");
+	}
 
     // Reserve 128kB wide memory area for DMA buffer
 
@@ -2119,8 +2130,7 @@ static int __init universeII_init(void)
     // Initialize list for DMA command packet structures
 
     for (i = 0; i < 256; i++) {
-        cpLists[i].free = 1;
-        cpLists[i].commandPacket = NULL;
+        cpLists[i].dcp = NULL;
     }
 
     // Initialize wait queues for DMA, VME irq and mailbox handling

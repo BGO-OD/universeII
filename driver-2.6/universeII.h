@@ -85,23 +85,13 @@ typedef struct {
 } vme_Berr_t;
 
 
-// structure to create a linked list of DMA command packets in kernel space
-
-struct kcp                    // Kernel command packet
-{
-    DMA_cmd_packet_t dcp;     // DMA command packet
-    unsigned int pciStart;    // Address for next data area
-    struct kcp *next;         // Pointer to next packet in kernel space 
-};                            // (kernel and PCI addresses are NOT the same!)
-
-
 // structure for one command packet list
 
 struct cpl
 {
-    int free;                   // Indicates if this list is free
-    struct kcp *commandPacket;  // Pointer to first element of list
+    DMA_cmd_packet_t *dcp;      // Pointer to array of command packets
     dma_addr_t start;           // Start address for DMA in PCI address space
+    unsigned int packets;       // Number of packets in the list
 };
 
 
