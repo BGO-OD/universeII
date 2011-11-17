@@ -552,8 +552,9 @@ static void execDMA(u32 chain)
     DMA_timer.function = DMA_timeout;                  // timeout DMA transfers
     add_timer(&DMA_timer);
 
-    writel(0x80006F0F | chain, baseaddr + DGCS);    // Start DMA, clear errors
+    writel(0x00006F0F | chain, baseaddr + DGCS);    // clear errors
                                                     // and enable all DMA irqs
+	writel(0x8000000F | chain, baseaddr + DGCS);    // Start DMA
     for (;;) {
         prepare_to_wait(&dmaWait, &wait, TASK_INTERRUPTIBLE);
         tmp = readl(baseaddr + DGCS);// check if DMA tranfser is still running
@@ -1548,20 +1549,33 @@ static long universeII_ioctl(struct file *file, unsigned int cmd,
                             "%08x!\n", arg, val);
                     return -1;
                 }
+/*				dtbc = readl(baseaddr + DTBC);
+				dla  = readl(baseaddr + DLA );
+				dva  = readl(baseaddr + DVA );
+				dctl = readl(baseaddr + DCTL);
+				dcpp = readl(baseaddr + DCPP);
+
+				printk("UniverseII: dctl = %08x dtbc = %08x dla = %08x dva = %08x dcpp = %08x \n",
+						dctl,dtbc,dla,dva,dcpp);
+	*/			
 
                 writel(0, baseaddr + DTBC);              // clear DTBC register
-                writel(cpLists[arg].start, baseaddr + DCPP);
+				writel(0, baseaddr + DLA);               
+				writel(0, baseaddr + DVA);
+				writel(cpLists[arg].dcp[0].dctl, baseaddr + DCTL); //correct value in this register required to start linked list transfer
 
+				writel(cpLists[arg].start, baseaddr + DCPP);
+/*				dtbc = readl(baseaddr + DTBC);
+				dla  = readl(baseaddr + DLA );
+				dva  = readl(baseaddr + DVA );
+				dctl = readl(baseaddr + DCTL);
+				dcpp = readl(baseaddr + DCPP);
+				
+				printk("UniverseII: dctl = %08x dtbc = %08x dla = %08x dva = %08x dcpp = %08x \n",
+					   dctl,dtbc,dla,dva,dcpp);
+	*/			
                 execDMA(0x08000000);                     // Enable chained mode
 
-// 				dctl = readl(baseaddr + DCTL);
-// 				dtbc = readl(baseaddr + DTBC);
-// 				dla  = readl(baseaddr + DLA );
-// 				dva  = readl(baseaddr + DVA );
-// 				dcpp = readl(baseaddr + DCPP);
-				
-// 				printk("UniverseII: dctl = %08x dtbc = %08x dla = %08x dva = %08x dcpp = %08x \n",
-// 					   dctl,dtbc,dla,dva,dcpp);
 				
                 if (testAndClearDMAErrors())             // Check for DMA errors
                      return -2;
