@@ -1761,6 +1761,8 @@ static long universeII_ioctl(struct file *file, unsigned int cmd,
                     if (cpLists[i].dcp != NULL) {
 						pci_free_consistent(universeII_dev, sizeof(DMA_cmd_packet_t)*128, cpLists[i].dcp, cpLists[i].start);
 						cpLists[i].dcp = NULL;
+						cpLists[i].file = NULL;
+						cpLists[i].packets = 0;
                     }
 			
 		        }
