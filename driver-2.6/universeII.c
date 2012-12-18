@@ -25,6 +25,7 @@
 #include <linux/interrupt.h>
 #include <linux/moduleparam.h>
 #include <linux/spinlock.h>
+#include <linux/sched.h>
 
 #include <linux/poll.h>
 #include <linux/proc_fs.h>
@@ -222,11 +223,11 @@ static vme_Berr_t vmeBerrList[32];       // A circular buffer for storing
 
 // Spinlocks
 
-static spinlock_t get_image_lock = SPIN_LOCK_UNLOCKED;
-static spinlock_t set_image_lock = SPIN_LOCK_UNLOCKED;
-static spinlock_t vme_lock = SPIN_LOCK_UNLOCKED;
-static spinlock_t dma_lock = SPIN_LOCK_UNLOCKED;
-static spinlock_t mbx_lock = SPIN_LOCK_UNLOCKED;
+static DEFINE_SPINLOCK(get_image_lock);
+static DEFINE_SPINLOCK(set_image_lock);
+static DEFINE_SPINLOCK(vme_lock);
+static DEFINE_SPINLOCK(dma_lock);
+static DEFINE_SPINLOCK(mbx_lock);
 
 
 /*
