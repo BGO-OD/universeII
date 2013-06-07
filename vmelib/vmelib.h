@@ -20,7 +20,6 @@
 #ifndef VMELIB_H
 #define VMELIB_H
 
-using namespace std;
 
 #include <vector>
 #include <stdint.h>
