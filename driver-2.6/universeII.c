@@ -29,6 +29,7 @@
 
 #include <linux/poll.h>
 #include <linux/proc_fs.h>
+#include <linux/seq_file.h>
 #include <linux/delay.h>
 
 #include "universeII.h"
@@ -110,9 +111,8 @@ _/                                            _/
 _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
 */
 
-
 static struct file_operations universeII_fops = {
-	.owner   = THIS_MODULE,
+    .owner   = THIS_MODULE,
     .open    = universeII_open,
     .release = universeII_release,
     .read    = universeII_read,
@@ -374,39 +374,36 @@ static irqreturn_t irq_handler(int irq, void *dev_id)
 //  universeII_procinfo()
 //
 //----------------------------------------------------------------------------
-static int universeII_procinfo(char *buf, char **start, off_t fpos, int lenght,
-                               int *eof, void *data)
+static int universeII_procinfo(struct seq_file *seq, void *v)
 {
     const char *const Axx[8] = { "A16", "A24", "A32", "Reserved", "Reserved",
                                  "CR/SCR", "User1", "User2" };
     const char *const Dxx[4] = { "D8", "D16", "D32", "D64" };
 
-    char *p;
     int i, index;
     u32 ctl, bs, bd, to;
 
-    p = buf;
-    p += sprintf(p, "UniverseII driver version %s\n", Version);
+    seq_printf(seq, "UniverseII driver version %s\n", Version);
 
-    p += sprintf(p, "  baseaddr = %08X\n\n", (int) baseaddr);
+    seq_printf(seq, "  baseaddr = %08X\n\n", (int) baseaddr);
 
     if (vrai_bs != 0)
-        p += sprintf(p, "Access to universeII registers from VME at: "
+        seq_printf(seq, "Access to universeII registers from VME at: "
                         "0x%08x\n\n", vrai_bs);
 
-    p += sprintf(p, "  Status variables:          DMA: ");
+        seq_printf(seq, "  Status variables:          DMA: ");
     if (dma_in_use)
-        p += sprintf(p, "in use\n\n");
+        seq_printf(seq, "in use\n\n");
     else
-        p += sprintf(p, "free\n\n");
+        seq_printf(seq, "free\n\n");
 
-    p += sprintf(p, "    reads      = %li\n    writes     = %li\n"
+    seq_printf(seq, "    reads      = %li\n    writes     = %li\n"
                     "    ioctls     = %li\n    irqs       = %li\n"
                     "    DMA errors = %li\n    timeouts   = %li \n\n", 
                  statistics.reads, statistics.writes, statistics.ioctls, 
                  statistics.irqs, statistics.dmaErrors, statistics.timeouts);
 
-    p += sprintf(p, "Allocated master images:\n");
+    seq_printf(seq, "Allocated master images:\n");
 
     for (i = 0; i < 8; i++) {
         if (image[i].opened) {
@@ -415,19 +412,19 @@ static int universeII_procinfo(char *buf, char **start, off_t fpos, int lenght,
             bd = readl(baseaddr + aBD[i]);
             to = readl(baseaddr + aTO[i]);
 
-            p += sprintf(p, "  Image %i:\n", i);
-            p += sprintf(p, "    Registers                VMEBus range\n");
-            p += sprintf(p, "    LSI%i_CTL = %08x        %s/%s\n", i, ctl,
+            seq_printf(seq, "  Image %i:\n", i);
+            seq_printf(seq, "    Registers                VMEBus range\n");
+            seq_printf(seq, "    LSI%i_CTL = %08x        %s/%s\n", i, ctl,
                          Axx[(ctl >> 16) & 0x7], Dxx[(ctl >> 22) & 0x3]);
-            p += sprintf(p, "    LSI%i_BS  = %08x\n", i, bs);
-            p += sprintf(p, "    LSI%i_BD  = %08x       %08x\n", i, bd,
+            seq_printf(seq, "    LSI%i_BS  = %08x\n", i, bs);
+            seq_printf(seq, "    LSI%i_BD  = %08x       %08x\n", i, bd,
                          bs + to);
-            p += sprintf(p, "    LSI%i_TO  = %08x       %08x\n\n", i, to,
+            seq_printf(seq, "    LSI%i_TO  = %08x       %08x\n\n", i, to,
                          bd + to);
         }
     }
 
-    p += sprintf(p, "Allocated slave images:\n");
+    seq_printf(seq, "Allocated slave images:\n");
 
     for (i = 10; i < 18; i++) {
         if (image[i].opened) {
@@ -436,34 +433,44 @@ static int universeII_procinfo(char *buf, char **start, off_t fpos, int lenght,
             bd = readl(baseaddr + aBD[i]);
             to = readl(baseaddr + aTO[i]);
 
-            p += sprintf(p, "  Image %i:\n", i);
-            p += sprintf(p, "    Registers                VMEBus range\n");
-            p += sprintf(p, "    VSI%i_CTL = %08x          %s\n", i, ctl,
+            seq_printf(seq, "  Image %i:\n", i);
+            seq_printf(seq, "    Registers                VMEBus range\n");
+            seq_printf(seq, "    VSI%i_CTL = %08x          %s\n", i, ctl,
                          Axx[(ctl >> 16) & 0x7]);
-            p += sprintf(p, "    VSI%i_BS  = %08x\n", i, bs);
-            p += sprintf(p, "    VSI%i_BD  = %08x       %08x\n", i, bd, bs);
-            p += sprintf(p, "    VSI%i_TO  = %08x       %08x\n\n", i, to, bd);
+            seq_printf(seq, "    VSI%i_BS  = %08x\n", i, bs);
+            seq_printf(seq, "    VSI%i_BD  = %08x       %08x\n", i, bd, bs);
+            seq_printf(seq, "    VSI%i_TO  = %08x       %08x\n\n", i, to, bd);
         }
     }
 
-    p += sprintf(p, "\nNumber of occured VMEBus errors: %li\n", statistics.berrs);
+    seq_printf(seq, "\nNumber of occured VMEBus errors: %li\n", statistics.berrs);
 
     if (statistics.berrs > 0) {
-        p += sprintf(p, "Showing last 32 BERRs (maximum)\n"
+        seq_printf(seq, "Showing last 32 BERRs (maximum)\n"
                      " BERR address   AM code     MERR\n");
         for (i = 0; i < 32; i++) {
             index = (statistics.berrs - 31 + i) & 0x1F;
             if (vmeBerrList[index].valid)
-                p += sprintf(p, "   %08x       %02x         %01x\n",
+                seq_printf(seq, "   %08x       %02x         %01x\n",
                              vmeBerrList[index].address, vmeBerrList[index].AM,
                              vmeBerrList[index].merr);
         }
     }
 
-    *eof = 1;
-    return p - buf;
+    return 0;
 }
 
+static int universeII_proc_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, universeII_procinfo, NULL);
+}
+
+static const struct file_operations universeII_proc_fops = {
+	.open = universeII_proc_open,
+	.read = seq_read,
+	.llseek = seq_lseek,
+	.release = single_release,
+};
 
 //----------------------------------------------------------------------------
 //
@@ -472,7 +479,7 @@ static int universeII_procinfo(char *buf, char **start, off_t fpos, int lenght,
 //----------------------------------------------------------------------------
 static void register_proc(void)
 {
-    create_proc_read_entry("universeII", 0, NULL, universeII_procinfo, NULL);
+    proc_create("universeII", 0, NULL, &universeII_proc_fops);
 }
 
 
